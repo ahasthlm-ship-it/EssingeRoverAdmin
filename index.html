@@ -1,0 +1,1091 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Essinge Rovers IK - Föreningsapp</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css?v=20260304a" />
+    <style>
+      :root {
+        --bg: #eef2fb;
+        --surface: #ffffff;
+        --surface-soft: #f6f8ff;
+        --text: #0f1b34;
+        --muted: #62749b;
+        --line: #d6e0f6;
+        --brand: #0b2f6b;
+        --brand-strong: #082452;
+        --brand-soft: #edf2ff;
+        --accent: #c1121f;
+        --accent-soft: #fdecef;
+        --danger: #b90d1a;
+      }
+
+      body {
+        color: var(--text);
+        background:
+          radial-gradient(1040px 600px at -8% -16%, rgba(11, 47, 107, 0.22), transparent 62%),
+          radial-gradient(840px 520px at 110% -14%, rgba(193, 18, 31, 0.16), transparent 62%),
+          linear-gradient(180deg, #f7f9ff 0%, var(--bg) 100%);
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      .app {
+        max-width: 1280px;
+        padding: 24px 22px 44px;
+        gap: 18px;
+      }
+
+      .hero {
+        position: relative;
+        overflow: hidden;
+        padding: 18px 20px;
+        border-radius: 20px;
+        border: 1px solid #d4def4;
+        background: linear-gradient(140deg, #ffffff 0%, #f6f8ff 58%, #eef3ff 100%);
+        box-shadow: 0 14px 34px rgba(9, 30, 72, 0.1);
+      }
+
+      .hero::after {
+        content: "";
+        position: absolute;
+        width: 320px;
+        height: 320px;
+        right: -120px;
+        top: -120px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(11, 47, 107, 0.18), transparent 68%);
+        pointer-events: none;
+      }
+
+      .hero-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .club-logo {
+        width: 58px;
+        height: 58px;
+        border-radius: 16px;
+        border: 1px solid #c8d5ef;
+        background: #fff;
+        box-shadow: 0 10px 22px rgba(8, 36, 82, 0.12);
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+      }
+
+      .club-logo svg {
+        width: 44px;
+        height: 44px;
+      }
+
+      .club-logo img {
+        width: 44px;
+        height: 44px;
+        object-fit: contain;
+      }
+
+      .hero .lead {
+        max-width: 540px;
+      }
+
+      .hero-top {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 8px;
+        align-items: start;
+      }
+
+      .hero-middle {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        justify-self: center;
+      }
+
+      .hero-right {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-end;
+        justify-self: end;
+        align-self: start;
+      }
+
+      .hero-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: flex-end;
+      }
+
+      .user-chip {
+        border: 1px solid #bfd0f4;
+        background: linear-gradient(180deg, #f6f9ff 0%, #ebf1ff 100%);
+        color: #17366f;
+        padding: 8px 12px;
+        border-radius: 11px;
+        font-weight: 700;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      }
+
+      .logout-btn {
+        background: linear-gradient(180deg, #d33444 0%, #b90d1a 100%) !important;
+        border-color: #a30a16 !important;
+        color: #fff !important;
+        box-shadow: 0 8px 18px rgba(185, 13, 26, 0.22) !important;
+        min-height: 52px;
+        padding: 10px 24px !important;
+        font-size: 18px;
+      }
+
+      .stats,
+      .kpi-grid {
+        gap: 12px;
+      }
+
+      .card,
+      .kpi-item {
+        border: 1px solid #d9e3f7;
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 10px 24px rgba(17, 42, 87, 0.06);
+      }
+
+      .value {
+        font-size: 28px;
+        letter-spacing: -0.02em;
+      }
+
+      .panel {
+        border-radius: 18px;
+        border: 1px solid #d9e3f7;
+        background: #fff;
+        box-shadow: 0 12px 28px rgba(14, 37, 79, 0.07);
+      }
+
+      .panel h2 {
+        letter-spacing: -0.01em;
+      }
+
+      .layout {
+        gap: 14px;
+      }
+
+      @media (min-width: 981px) {
+        .layout {
+          grid-template-columns: 1.24fr 0.76fr;
+        }
+      }
+
+      .panel-head {
+        margin-bottom: 12px;
+      }
+
+      .grid-form {
+        gap: 12px;
+      }
+
+      input,
+      select {
+        border-radius: 11px;
+        border-color: #ccd9f2;
+        background: #fbfcff;
+      }
+
+      input:focus,
+      select:focus {
+        outline: 3px solid rgba(11, 47, 107, 0.14);
+        border-color: #97b2e6;
+      }
+
+      .btn {
+        border-radius: 11px;
+        padding: 10px 14px;
+      }
+
+      .btn:not(.light):not(.danger) {
+        background: linear-gradient(180deg, #134391 0%, #0b2f6b 100%);
+        border-color: #0b2f6b;
+        box-shadow: 0 8px 18px rgba(11, 47, 107, 0.2);
+      }
+
+      .btn:not(.light):not(.danger):hover {
+        background: linear-gradient(180deg, #113f88 0%, #082452 100%);
+        border-color: #082452;
+      }
+
+      .btn.light {
+        background: #f2f5ff;
+        border-color: #d2def4;
+        color: #1f376b;
+      }
+
+      .btn.light:hover {
+        background: #eaf0ff;
+        border-color: #c1d2f0;
+      }
+
+      .btn.danger {
+        background: var(--accent-soft);
+        color: #8b1e2b;
+        border-color: #edbcc3;
+      }
+
+      .btn.danger:hover {
+        background: #fbe2e6;
+      }
+
+      .table-wrap,
+      .report-box {
+        border-color: #dbe4f8;
+        border-radius: 14px;
+        background: #fbfcff;
+      }
+
+      th {
+        background: #f1f5ff;
+        color: #2d4679;
+      }
+
+      td,
+      th {
+        border-bottom-color: #e9eefb;
+      }
+
+      .item {
+        border-color: #dbe4f8;
+        border-radius: 14px;
+        background: #fbfcff;
+      }
+
+      .actions {
+        gap: 10px;
+      }
+
+      .icon-btn {
+        border-radius: 10px;
+        border-color: #d7b7bc;
+        background: #fff2f3;
+      }
+
+      .meta,
+      .status {
+        color: var(--muted);
+      }
+
+      /* Modern Touch Pass */
+      .hero {
+        position: sticky;
+        top: 10px;
+        z-index: 30;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(11, 47, 107, 0.16);
+        box-shadow:
+          0 14px 30px rgba(11, 47, 107, 0.12),
+          inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      }
+
+      .hero-actions .btn {
+        min-height: 38px;
+      }
+
+      .kpi-item {
+        background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
+        border: 1px solid #d9e2f8;
+        box-shadow: 0 8px 20px rgba(11, 47, 107, 0.07);
+      }
+
+      .kpi-item .label {
+        font-weight: 600;
+        color: #5e7095;
+      }
+
+      .kpi-item .value {
+        font-size: 28px;
+        letter-spacing: -0.02em;
+        color: #0d234f;
+      }
+
+      .panel {
+        background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
+      }
+
+      .table-wrap {
+        border: 1px solid #d6e1f8;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      }
+
+      table {
+        font-size: 15px;
+      }
+
+      th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        font-weight: 700;
+        color: #4b6190;
+        background: linear-gradient(180deg, #f4f7ff 0%, #eef3ff 100%);
+      }
+
+      td {
+        font-size: 15px;
+        color: #12264f;
+      }
+
+      tr:hover td {
+        background: rgba(11, 47, 107, 0.03);
+      }
+
+      .type-pill {
+        border: 1px solid transparent;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+      }
+
+      .type-pill.income {
+        border-color: #b9e5cf;
+      }
+
+      .type-pill.expense {
+        border-color: #f2c0c7;
+      }
+
+      .status-chip {
+        border: 1px solid transparent;
+        font-weight: 700;
+      }
+
+      .status-chip.unpaid {
+        border-color: #edd79d;
+      }
+
+      .status-chip.rejected {
+        border-color: #e9b7be;
+      }
+
+      .status-chip.paid {
+        border-color: #b7e4c9;
+      }
+
+      .icon-btn {
+        border-radius: 11px;
+      }
+
+      .section-anchor {
+        scroll-margin-top: 120px;
+      }
+
+      .section-nav .nav-link {
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        min-height: 36px;
+      }
+
+      .section-nav-main,
+      .section-nav-secondary {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .section-nav-main {
+        justify-content: center;
+      }
+
+      .section-nav-main .nav-link {
+        background: linear-gradient(180deg, #134391 0%, #0b2f6b 100%);
+        border: 1px solid #0b2f6b;
+        color: #fff;
+        font-weight: 700;
+        box-shadow: 0 8px 18px rgba(11, 47, 107, 0.2);
+      }
+
+      .section-nav-main .nav-link:hover {
+        background: linear-gradient(180deg, #113f88 0%, #082452 100%);
+      }
+
+      .section-nav-secondary {
+        margin-top: 0;
+      }
+
+      .section-nav-secondary .nav-link {
+        min-height: 26px;
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: 999px;
+        background: #f2f5ff;
+        border: 1px solid #d2def4;
+        color: #35548c;
+      }
+
+      .section-nav-secondary .nav-link:hover {
+        background: #e9efff;
+        border-color: #c2d3f0;
+      }
+
+      .dev-actions {
+        margin-top: 0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 6px;
+      }
+
+      .btn.xs {
+        min-height: 30px;
+        padding: 5px 9px;
+        font-size: 12px;
+        border-radius: 9px;
+        opacity: 0.85;
+      }
+
+      .top-status {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .top-status .status-card {
+        border: 1px solid #d9e3f7;
+        border-radius: 12px;
+        padding: 10px 12px;
+        background: #fff;
+        box-shadow: 0 6px 16px rgba(11, 47, 107, 0.06);
+      }
+
+      .top-status .status-card p {
+        margin: 0;
+      }
+
+      .top-status .status-card .k {
+        color: #5e7095;
+        font-size: 12px;
+      }
+
+      .top-status .status-card .v {
+        margin-top: 5px;
+        font-size: 17px;
+        font-weight: 700;
+      }
+
+      .role-note {
+        margin-top: 8px;
+        border: 1px dashed #ccd9f2;
+        border-radius: 10px;
+        background: #f7faff;
+        color: #33548e;
+        font-size: 12px;
+        padding: 8px 10px;
+      }
+
+      .field-error {
+        min-height: 14px;
+        color: #b21c2b;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .quick-filters {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 2px;
+      }
+
+      .chip-btn {
+        border: 1px solid #ccd8f2;
+        background: #f4f7ff;
+        color: #35548c;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .chip-btn.active {
+        background: #0b2f6b;
+        border-color: #0b2f6b;
+        color: #fff;
+      }
+
+      .action-help {
+        color: #6378a4;
+        font-size: 12px;
+      }
+
+      .inline-tools {
+        display: inline-flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .tiny-btn {
+        border: 1px solid #cdd9f2;
+        border-radius: 8px;
+        background: #f4f7ff;
+        color: #28487f;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 3px 8px;
+        cursor: pointer;
+      }
+
+      .tiny-btn:hover {
+        background: #eaf0ff;
+      }
+
+      .tiny-meta {
+        color: #60739b;
+        font-size: 11px;
+      }
+
+      .toast {
+        position: fixed;
+        right: 20px;
+        bottom: 18px;
+        z-index: 2000;
+        background: #0b2f6b;
+        color: #fff;
+        border-radius: 12px;
+        padding: 10px 12px;
+        box-shadow: 0 12px 28px rgba(6, 24, 57, 0.34);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .toast button {
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+        border-radius: 9px;
+        padding: 5px 8px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .onboarding-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(4, 16, 38, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2100;
+        padding: 18px;
+      }
+
+      .onboarding-card {
+        width: min(560px, 100%);
+        border: 1px solid #d5e0f7;
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 20px 50px rgba(8, 30, 67, 0.24);
+        padding: 18px 18px 14px;
+      }
+
+      .onboarding-card h3 {
+        margin: 0;
+        font-size: 22px;
+      }
+
+      .onboarding-card p {
+        margin: 8px 0 0;
+        color: #50658f;
+      }
+
+      .onboarding-card ol {
+        margin: 12px 0 0 18px;
+        color: #213d70;
+      }
+
+      .onboarding-card li {
+        margin: 6px 0;
+      }
+
+      @media (max-width: 1100px) {
+        .hero-top {
+          grid-template-columns: 1fr;
+          justify-items: start;
+        }
+
+        .section-nav-main {
+          justify-content: flex-start;
+        }
+
+        .hero-actions {
+          justify-content: flex-start;
+        }
+
+        .hero-right {
+          align-items: flex-start;
+        }
+
+        .dev-actions {
+          justify-content: flex-start;
+        }
+
+        .top-status {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <section id="authScreen" class="auth-screen">
+      <form id="authForm" class="auth-card">
+        <p class="kicker">Essinge Rovers IK</p>
+        <h1>Logga in</h1>
+        <p class="lead">Välj roll och ange PIN för att fortsätta.</p>
+
+        <label>
+          Roll
+          <select id="authRole">
+            <option value="admin">Admin</option>
+          </select>
+        </label>
+
+        <label>
+          PIN
+          <input id="authPin" type="password" inputmode="numeric" maxlength="8" placeholder="****" required />
+        </label>
+
+        <button class="btn" type="submit">Logga in</button>
+        <p id="authPinHint" class="meta">Första inloggning: Admin 1122. Admin kan sedan byta PIN.</p>
+        <p id="authStatus" class="status"></p>
+      </form>
+    </section>
+
+    <main id="appRoot" class="app hidden">
+      <header class="hero">
+        <div class="hero-top">
+          <div class="hero-brand">
+            <div class="club-logo" aria-label="Essinge Rovers IK logotyp">
+              <img src="./assets/essinge-rovers-logo.png" alt="Essinge Rovers IK logotyp" />
+            </div>
+            <div>
+              <h1>Essinge Rovers IK</h1>
+            </div>
+          </div>
+          <div class="hero-middle">
+            <nav class="section-nav-main" aria-label="Huvudnavigering">
+              <a class="btn nav-link" href="#financePanel">Bokföring</a>
+              <a class="btn nav-link" href="#memberPanel">Medlemsregister</a>
+              <a class="btn nav-link" href="#invoicePanel">Fakturor medlemsavgift</a>
+            </nav>
+            <div class="section-nav-secondary" aria-label="Övriga sektioner">
+              <a class="nav-link" href="#reportPanel">Rapport</a>
+              <a class="nav-link" href="#accountsPanel">Kontoplan</a>
+              <a class="nav-link" href="#backupPanel">Backup</a>
+              <a class="nav-link" href="#auditPanel">Ändringslogg</a>
+              <a class="nav-link" href="#integrationPanel">Integration</a>
+              <a class="nav-link" href="#securityPanel">Säkerhet</a>
+            </div>
+          </div>
+          <div class="hero-right">
+            <div class="hero-actions">
+              <button id="logoutBtn" class="btn logout-btn" type="button">Logga ut</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="stats" aria-label="Nyckeltal">
+        <article class="card">
+          <p class="label">Saldo</p>
+          <p id="balanceCard" class="value">0 kr</p>
+        </article>
+        <article class="card">
+          <p class="label">Intäkter (månad)</p>
+          <p id="incomeCard" class="value">0 kr</p>
+        </article>
+        <article class="card">
+          <p class="label">Utgifter (månad)</p>
+          <p id="expenseCard" class="value">0 kr</p>
+        </article>
+        <article class="card">
+          <p class="label">Medlemmar</p>
+          <p id="memberCard" class="value">0</p>
+        </article>
+      </section>
+
+      <section id="kpiPanel" class="panel">
+        <div class="panel-head">
+          <h2>KPI</h2>
+          <p class="meta">Snabb koll på avgifter och betalstatus</p>
+        </div>
+        <div id="kpiGrid" class="kpi-grid"></div>
+      </section>
+
+      <section class="layout">
+        <section id="financePanel" class="panel section-anchor">
+          <div class="panel-head">
+            <h2>Bokföring</h2>
+            <div class="actions">
+              <label>
+                Månad
+                <input id="monthFilter" type="month" min="2024-01" />
+              </label>
+              <label>
+                Sök
+                <input id="txSearch" placeholder="Beskrivning, konto eller verifikation" />
+              </label>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="lockMonthBtn" class="btn light" type="button">Lås månad</button>
+            <button id="unlockMonthBtn" class="btn light" type="button">Lås upp månad</button>
+            <span id="monthLockStatus" class="status"></span>
+          </div>
+          <form id="transactionForm" class="grid-form">
+            <label>
+              Datum
+              <input id="txDate" type="date" min="2024-01-01" required />
+            </label>
+            <label>
+              Typ
+              <select id="txType">
+                <option value="income">Intäkt</option>
+                <option value="expense">Utgift</option>
+              </select>
+            </label>
+            <label>
+              Belopp (kr)
+              <input id="txAmount" placeholder="0,00" inputmode="decimal" required />
+            </label>
+            <label>
+              Konto
+              <select id="txCategory"></select>
+            </label>
+            <label class="wide">
+              Beskrivning
+              <input id="txDesc" maxlength="120" placeholder="T.ex. medlemsavgift januari (valfritt)" />
+            </label>
+            <div class="wide reference-wrap">
+              <button
+                id="toggleReferenceBox"
+                class="btn light reference-toggle"
+                type="button"
+                aria-expanded="false"
+                aria-controls="referenceBox"
+              >
+                Visa bilagor (kvitto/faktura)
+              </button>
+              <div id="referenceBox" class="reference-box hidden">
+                <p class="reference-title">📎 Bilagor för årsbokslut</p>
+                <label>
+                  Referenstyp
+                  <select id="txRefType">
+                    <option value="none">Ingen</option>
+                    <option value="receipt">Kvitto</option>
+                    <option value="invoice">Faktura</option>
+                  </select>
+                </label>
+                <label>
+                  Bifoga kvitto/faktura (PDF eller bild, valfritt)
+                  <input id="txRefFile" type="file" accept=".pdf,image/*" />
+                </label>
+                <label class="check-row">
+                  <input id="txRefClear" type="checkbox" />
+                  Ta bort befintlig referens vid uppdatering
+                </label>
+                <p id="txRefHint" class="meta"></p>
+              </div>
+            </div>
+            <div class="actions wide">
+              <button id="saveTxBtn" class="btn" type="submit">Spara post</button>
+              <button id="cancelEditTxBtn" class="btn light hidden" type="button">Avbryt redigering</button>
+              <button id="exportExcelBtn" class="btn light" type="button">Exportera Excel</button>
+              <button id="exportCsvBtn" class="btn light" type="button">Exportera CSV</button>
+              <p id="txStatus" class="status"></p>
+            </div>
+          </form>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Datum</th>
+                  <th>Ver.nr</th>
+                  <th>Typ</th>
+                  <th>Konto</th>
+                  <th>Beskrivning</th>
+                  <th>Referens</th>
+                  <th class="right">Belopp</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="txBody"></tbody>
+            </table>
+            <p id="txEmpty" class="empty">Inga poster registrerade.</p>
+          </div>
+        </section>
+
+        <section id="reportPanel" class="panel section-anchor">
+          <div class="panel-head">
+            <h2>Månadsrapport</h2>
+            <p id="reportMonth" class="meta"></p>
+          </div>
+          <div id="reportBox" class="report-box"></div>
+        </section>
+      </section>
+
+      <section class="layout">
+        <section id="memberPanel" class="panel section-anchor">
+          <h2>Medlemsregister</h2>
+          <form id="memberForm" class="grid-form">
+            <label>
+              Namn
+              <input id="memberName" maxlength="80" required />
+            </label>
+            <label>
+              E-post
+              <input id="memberEmail" type="email" maxlength="120" required />
+            </label>
+            <label>
+              Roll
+              <select id="memberRole">
+                <option>Spelare</option>
+                <option>Ledare</option>
+                <option>Förälder</option>
+                <option>Styrelse</option>
+              </select>
+            </label>
+            <div class="actions wide">
+              <button class="btn" type="submit">Lägg till medlem</button>
+              <p id="memberStatus" class="status"></p>
+            </div>
+          </form>
+
+          <ul id="memberList" class="list"></ul>
+          <p id="memberEmpty" class="empty">Inga medlemmar registrerade.</p>
+        </section>
+
+      </section>
+
+      <section id="invoicePanel" class="panel section-anchor">
+        <h2>Fakturor medlemsavgift (Admin)</h2>
+        <form id="invoiceForm" class="grid-form">
+          <label>
+            Serie
+            <select id="invoiceSeriesSelect">
+              <option value="P">P (pojkar/herrar)</option>
+              <option value="F">F (flickor/damer)</option>
+            </select>
+          </label>
+          <label>
+            Medlem
+            <select id="invoiceMemberSelect"></select>
+          </label>
+          <label>
+            Belopp (kr)
+            <input id="invoiceAmountInput" inputmode="decimal" placeholder="t.ex. 1200" required />
+          </label>
+          <label>
+            Förfallodatum
+            <input id="invoiceDueDateInput" type="date" required />
+          </label>
+          <label class="wide">
+            Notering (valfritt)
+            <input id="invoiceNoteInput" maxlength="140" placeholder="t.ex. Vårtermin 2026" />
+          </label>
+          <div class="actions wide">
+            <button class="btn" type="submit">Skapa faktura</button>
+            <button id="exportInvoicesCsvBtn" class="btn light" type="button">Exportera fakturor CSV</button>
+            <button id="printInvoicesBtn" class="btn light" type="button">Skriv ut fakturalista (PDF)</button>
+            <p id="invoiceStatus" class="status"></p>
+          </div>
+        </form>
+
+        <div class="actions">
+          <label>
+            Sök faktura
+            <input id="invoiceSearch" placeholder="Fakturanummer, namn eller e-post" />
+          </label>
+          <label>
+            Status
+            <select id="invoiceFilterStatus">
+              <option value="all">Alla</option>
+              <option value="unpaid">Obetalda</option>
+              <option value="paid">Betalda</option>
+              <option value="rejected">Avvisade</option>
+              <option value="overdue">Förfallna</option>
+            </select>
+          </label>
+        </div>
+
+        <ul id="invoiceList" class="list"></ul>
+        <p id="invoiceEmpty" class="empty">Inga fakturor skapade.</p>
+      </section>
+
+      <section id="backupPanel" class="panel section-anchor">
+        <h2>Backup och import (Admin)</h2>
+        <div class="actions">
+          <button id="exportBackupBtn" class="btn light" type="button">Exportera full backup</button>
+          <button id="importBackupBtn" class="btn light" type="button">Importera full backup</button>
+          <input id="importBackupFile" type="file" accept="application/json" class="hidden" />
+          <p id="backupStatus" class="status"></p>
+        </div>
+      </section>
+
+      <section id="integrationPanel" class="panel section-anchor">
+        <h2>Integrationsflöde & betaluppgifter (Admin)</h2>
+        <form id="integrationForm" class="grid-form">
+          <label>
+            Avsändare (förening)
+            <input id="clubNameInput" maxlength="80" placeholder="Essinge Rovers IK" />
+          </label>
+          <label>
+            Organisationsnummer
+            <input id="orgNoInput" maxlength="20" placeholder="XXXXXX-XXXX" />
+          </label>
+          <label>
+            Bankgiro
+            <input id="bankgiroInput" maxlength="20" placeholder="123-4567" />
+          </label>
+          <label>
+            Plusgiro (valfritt)
+            <input id="plusgiroInput" maxlength="20" placeholder="12 34 56-7" />
+          </label>
+          <label>
+            Bankkonto (valfritt)
+            <input id="bankAccountInput" maxlength="34" placeholder="SE00 0000 0000 0000 0000 0000" />
+          </label>
+          <label>
+            Swishnummer
+            <input id="swishNumberInput" maxlength="20" placeholder="123 456 78 90" />
+          </label>
+          <label>
+            Swish-mottagarnamn
+            <input id="swishRecipientInput" maxlength="80" placeholder="Essinge Rovers IK" />
+          </label>
+          <label class="wide">
+            Webhook-URL (valfritt)
+            <input
+              id="emailWebhookInput"
+              type="url"
+              placeholder="https://din-backend.se/api/invoice-reminder"
+            />
+          </label>
+          <div class="actions wide">
+            <button class="btn" type="submit">Spara integrationsinställning</button>
+            <p id="integrationStatus" class="status"></p>
+          </div>
+        </form>
+      </section>
+
+      <section id="securityPanel" class="panel section-anchor">
+        <h2>Säkerhet (Admin)</h2>
+        <form id="pinForm" class="grid-form">
+          <label>
+            Ny PIN för Admin
+            <input id="adminPinInput" inputmode="numeric" maxlength="8" placeholder="Minst 4 siffror" required />
+          </label>
+          <div class="actions wide">
+            <button class="btn" type="submit">Spara Admin PIN</button>
+            <p id="pinStatus" class="status"></p>
+          </div>
+        </form>
+      </section>
+
+      <section id="accountsPanel" class="panel section-anchor">
+        <h2>Kontoplan (Admin)</h2>
+        <form id="accountForm" class="grid-form">
+          <label>
+            Typ
+            <select id="accountTypeInput">
+              <option value="income">Intäkt</option>
+              <option value="expense">Utgift</option>
+            </select>
+          </label>
+          <label>
+            Kontokod
+            <input id="accountCodeInput" maxlength="6" placeholder="t.ex. 3911" required />
+          </label>
+          <label>
+            Kontonamn
+            <input id="accountNameInput" maxlength="80" placeholder="t.ex. Medlemsavgifter" required />
+          </label>
+          <div class="actions wide">
+            <button class="btn" type="submit">Lägg till konto</button>
+            <button id="exportAccountsBtn" class="btn light" type="button">Exportera JSON</button>
+            <button id="importAccountsBtn" class="btn light" type="button">Importera JSON</button>
+            <input id="importAccountsFile" type="file" accept="application/json" class="hidden" />
+            <p id="accountStatus" class="status"></p>
+          </div>
+        </form>
+
+        <div class="layout">
+          <section>
+            <h3>Intäkter</h3>
+            <ul id="incomeAccountsList" class="list"></ul>
+          </section>
+          <section>
+            <h3>Utgifter</h3>
+            <ul id="expenseAccountsList" class="list"></ul>
+          </section>
+        </div>
+      </section>
+
+      <section id="auditPanel" class="panel section-anchor">
+        <h2>Ändringslogg</h2>
+        <ul id="auditList" class="list"></ul>
+        <p id="auditEmpty" class="empty">Inga ändringar loggade.</p>
+      </section>
+
+      <section class="panel">
+        <h2>GDPR och policy</h2>
+        <p class="meta">
+          Spara bara nödvändiga uppgifter (namn, e-post, avgifter). Radera medlem när syftet upphört.
+          Vid export/import ansvarar föreningen för korrekt hantering av personuppgifter.
+        </p>
+      </section>
+    </main>
+
+    <div id="undoToast" class="toast hidden" role="status" aria-live="polite">
+      <span id="undoToastText"></span>
+      <button id="undoToastBtn" type="button">Ångra</button>
+    </div>
+
+    <div id="onboardingModal" class="onboarding-backdrop hidden" aria-hidden="true">
+      <div class="onboarding-card">
+        <h3>Snabbstart</h3>
+        <p>Tre steg för att komma igång direkt:</p>
+        <ol>
+          <li>Skapa eller välj medlem under <strong>Medlemsregister</strong>.</li>
+          <li>Skapa faktura under <strong>Fakturor medlemsavgift</strong>.</li>
+          <li>När faktura markeras betald bokförs intäkten automatiskt med PDF-bilaga.</li>
+        </ol>
+        <div class="actions" style="margin-top: 12px;">
+          <button id="onboardingCloseBtn" class="btn" type="button">Jag förstår</button>
+          <button id="onboardingLaterBtn" class="btn light" type="button">Visa senare</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="./app.js?v=20260304b"></script>
+  </body>
+</html>
