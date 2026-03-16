@@ -658,23 +658,44 @@
       <form id="authForm" class="auth-card">
         <p class="kicker">Essinge Rovers IK</p>
         <h1>Logga in</h1>
-        <p class="lead">Välj roll och ange PIN för att fortsätta.</p>
+        <p id="authLead" class="lead">Logga in med e-post och lösenord.</p>
 
         <label>
-          Roll
-          <select id="authRole">
-            <option value="admin">Admin</option>
-          </select>
+          E-post
+          <input id="authEmail" type="email" autocomplete="username" placeholder="namn@forening.se" required />
         </label>
 
         <label>
-          PIN
-          <input id="authPin" type="password" inputmode="numeric" maxlength="8" placeholder="****" required />
+          Lösenord
+          <input id="authPassword" type="password" autocomplete="current-password" placeholder="Minst 8 tecken" required />
         </label>
 
         <button class="btn" type="submit">Logga in</button>
-        <p id="authPinHint" class="meta">Första inloggning: Admin 1122. Admin kan sedan byta PIN.</p>
         <p id="authStatus" class="status"></p>
+      </form>
+
+      <form id="setupForm" class="auth-card hidden">
+        <p class="kicker">Första uppstart</p>
+        <h1>Skapa första admin</h1>
+        <p class="lead">Det här kontot blir första styrelsekontot och kan sedan skapa fler användare.</p>
+
+        <label>
+          Namn
+          <input id="setupName" maxlength="80" placeholder="t.ex. Ahmad Saad" required />
+        </label>
+
+        <label>
+          E-post
+          <input id="setupEmail" type="email" autocomplete="username" placeholder="namn@forening.se" required />
+        </label>
+
+        <label>
+          Lösenord
+          <input id="setupPassword" type="password" autocomplete="new-password" placeholder="Minst 8 tecken" required />
+        </label>
+
+        <button class="btn" type="submit">Skapa första admin</button>
+        <p id="setupStatus" class="status"></p>
       </form>
     </section>
 
@@ -905,6 +926,10 @@
             <input id="invoiceAmountInput" inputmode="decimal" placeholder="t.ex. 1200" required />
           </label>
           <label>
+            Fakturadatum
+            <input id="invoiceDateInput" type="date" required />
+          </label>
+          <label>
             Förfallodatum
             <input id="invoiceDueDateInput" type="date" required />
           </label>
@@ -914,6 +939,7 @@
           </label>
           <div class="actions wide">
             <button class="btn" type="submit">Skapa faktura</button>
+            <button id="createInvoiceAndMailBtn" class="btn light" type="submit">Skapa + öppna mail</button>
             <button id="exportInvoicesCsvBtn" class="btn light" type="button">Exportera fakturor CSV</button>
             <button id="printInvoicesBtn" class="btn light" type="button">Skriv ut fakturalista (PDF)</button>
             <p id="invoiceStatus" class="status"></p>
@@ -999,16 +1025,42 @@
 
       <section id="securityPanel" class="panel section-anchor">
         <h2>Säkerhet (Admin)</h2>
-        <form id="pinForm" class="grid-form">
+        <form id="passwordForm" class="grid-form">
           <label>
-            Ny PIN för Admin
-            <input id="adminPinInput" inputmode="numeric" maxlength="8" placeholder="Minst 4 siffror" required />
+            Nuvarande lösenord
+            <input id="currentPasswordInput" type="password" autocomplete="current-password" required />
+          </label>
+          <label>
+            Nytt lösenord
+            <input id="newPasswordInput" type="password" autocomplete="new-password" placeholder="Minst 8 tecken" required />
           </label>
           <div class="actions wide">
-            <button class="btn" type="submit">Spara Admin PIN</button>
-            <p id="pinStatus" class="status"></p>
+            <button class="btn" type="submit">Byt mitt lösenord</button>
+            <p id="passwordStatus" class="status"></p>
           </div>
         </form>
+
+        <form id="userForm" class="grid-form">
+          <label>
+            Namn
+            <input id="userNameInput" maxlength="80" placeholder="t.ex. Kassör eller Ordförande" required />
+          </label>
+          <label>
+            E-post
+            <input id="userEmailInput" type="email" autocomplete="off" placeholder="namn@forening.se" required />
+          </label>
+          <label>
+            Tillfälligt lösenord
+            <input id="userPasswordInput" type="password" autocomplete="new-password" placeholder="Minst 8 tecken" required />
+          </label>
+          <div class="actions wide">
+            <button class="btn" type="submit">Skapa styrelsekonto</button>
+            <p id="userStatus" class="status"></p>
+          </div>
+        </form>
+
+        <ul id="userList" class="list"></ul>
+        <p id="userEmpty" class="empty">Inga användare upplagda än.</p>
       </section>
 
       <section id="accountsPanel" class="panel section-anchor">

@@ -1,0 +1,6 @@
+data/app.db
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+.browser-profile/
+__pycache__/

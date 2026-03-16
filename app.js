@@ -1,13 +1,16 @@
 const KEY = "essinge_rovers_ik_v1";
-const SESSION_KEY = "essinge_rovers_session_v1";
-const PINS_KEY = "essinge_rovers_pins_v1";
 const ACCOUNTS_KEY = "essinge_rovers_accounts_v1";
 const ONBOARDING_KEY = "essinge_rovers_onboarding_seen_v1";
+const DISK_API_LOAD = "/api/storage/load";
+const DISK_API_SAVE = "/api/storage/save";
+const AUTH_STATUS_API = "/api/auth/status";
+const AUTH_ME_API = "/api/auth/me";
+const AUTH_LOGIN_API = "/api/auth/login";
+const AUTH_LOGOUT_API = "/api/auth/logout";
+const AUTH_BOOTSTRAP_API = "/api/auth/bootstrap";
+const AUTH_CHANGE_PASSWORD_API = "/api/auth/change-password";
+const ADMIN_USERS_API = "/api/admin/users";
 const MAX_REFERENCE_FILE_BYTES = 2 * 1024 * 1024;
-
-const defaultPins = {
-  admin: "1122",
-};
 
 const authLabels = {
   admin: "Admin",
@@ -41,22 +44,29 @@ const defaultAccountsByType = {
 
 const state = loadState();
 let accountsByType = loadAccounts();
-let pins = loadPins();
-let session = loadSession();
+let session = null;
+let authNeedsSetup = false;
+let adminUsers = [];
 let editingTxId = null;
 let currentTxFilter = "all";
 let undoTimeout = null;
 let undoAction = null;
+let diskSyncTimer = null;
+let diskAvailable = false;
 
 const refs = {
   authScreen: document.getElementById("authScreen"),
   appRoot: document.getElementById("appRoot"),
   authForm: document.getElementById("authForm"),
-  authRole: document.getElementById("authRole"),
-  authPin: document.getElementById("authPin"),
+  authLead: document.getElementById("authLead"),
+  authEmail: document.getElementById("authEmail"),
+  authPassword: document.getElementById("authPassword"),
   authStatus: document.getElementById("authStatus"),
-  authPinHint: document.getElementById("authPinHint"),
-  currentUser: document.getElementById("currentUser"),
+  setupForm: document.getElementById("setupForm"),
+  setupName: document.getElementById("setupName"),
+  setupEmail: document.getElementById("setupEmail"),
+  setupPassword: document.getElementById("setupPassword"),
+  setupStatus: document.getElementById("setupStatus"),
   logoutBtn: document.getElementById("logoutBtn"),
   roleHint: document.getElementById("roleHint"),
   topMonthStatus: document.getElementById("topMonthStatus"),
@@ -114,8 +124,10 @@ const refs = {
   invoiceSeriesSelect: document.getElementById("invoiceSeriesSelect"),
   invoiceMemberSelect: document.getElementById("invoiceMemberSelect"),
   invoiceAmountInput: document.getElementById("invoiceAmountInput"),
+  invoiceDateInput: document.getElementById("invoiceDateInput"),
   invoiceDueDateInput: document.getElementById("invoiceDueDateInput"),
   invoiceNoteInput: document.getElementById("invoiceNoteInput"),
+  createInvoiceAndMailBtn: document.getElementById("createInvoiceAndMailBtn"),
   exportInvoicesCsvBtn: document.getElementById("exportInvoicesCsvBtn"),
   printInvoicesBtn: document.getElementById("printInvoicesBtn"),
   invoiceSearch: document.getElementById("invoiceSearch"),
@@ -134,9 +146,17 @@ const refs = {
   activityEmpty: document.getElementById("activityEmpty"),
 
   securityPanel: document.getElementById("securityPanel"),
-  pinForm: document.getElementById("pinForm"),
-  adminPinInput: document.getElementById("adminPinInput"),
-  pinStatus: document.getElementById("pinStatus"),
+  passwordForm: document.getElementById("passwordForm"),
+  currentPasswordInput: document.getElementById("currentPasswordInput"),
+  newPasswordInput: document.getElementById("newPasswordInput"),
+  passwordStatus: document.getElementById("passwordStatus"),
+  userForm: document.getElementById("userForm"),
+  userNameInput: document.getElementById("userNameInput"),
+  userEmailInput: document.getElementById("userEmailInput"),
+  userPasswordInput: document.getElementById("userPasswordInput"),
+  userStatus: document.getElementById("userStatus"),
+  userList: document.getElementById("userList"),
+  userEmpty: document.getElementById("userEmpty"),
 
   accountsPanel: document.getElementById("accountsPanel"),
   accountForm: document.getElementById("accountForm"),
@@ -190,6 +210,7 @@ function init() {
   if (refs.activityDate) {
     refs.activityDate.value = toDateInput(today);
   }
+  refs.invoiceDateInput.value = toDateInput(today);
   refs.invoiceDueDateInput.value = toDateInput(addDays(today, 30));
   refs.monthFilter.value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
   refs.clubNameInput.value = state.settings.clubName || "Essinge Rovers IK";
@@ -203,12 +224,11 @@ function init() {
 
   hydrateCategorySelect();
   bindEvents();
-  renderAuthPinHint();
-  applyAuthUi();
   resetTxFormState();
   clearTxErrors();
   setReferenceBoxExpanded(false);
   renderAll();
+  initializeApp();
   showOnboardingIfNeeded();
 }
 
@@ -340,11 +360,27 @@ function countMojibakeMarkers(text) {
   return matches ? matches.length : 0;
 }
 
+async function initializeApp() {
+  await refreshSessionStatus();
+  if (session) {
+    await hydrateFromServerStorage();
+    await loadUserAccounts();
+  }
+  applyAuthUi();
+  renderAll();
+}
+
 function bindEvents() {
   refs.authForm.addEventListener("submit", (event) => {
     event.preventDefault();
     login();
   });
+  if (refs.setupForm) {
+    refs.setupForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      bootstrapAdmin();
+    });
+  }
 
   refs.logoutBtn.addEventListener("click", logout);
 
@@ -392,7 +428,9 @@ function bindEvents() {
 
   refs.invoiceForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    createInvoice();
+    const submitterId = event.submitter && event.submitter.id ? event.submitter.id : "";
+    const openMailAfterCreate = submitterId === "createInvoiceAndMailBtn";
+    createInvoice(openMailAfterCreate);
   });
   refs.exportInvoicesCsvBtn.addEventListener("click", exportInvoicesCsv);
   refs.printInvoicesBtn.addEventListener("click", printInvoicesPdf);
@@ -404,10 +442,18 @@ function bindEvents() {
     });
   }
 
-  refs.pinForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    updatePins();
-  });
+  if (refs.passwordForm) {
+    refs.passwordForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      changeOwnPassword();
+    });
+  }
+  if (refs.userForm) {
+    refs.userForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      createManagedUser();
+    });
+  }
 
   refs.accountForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -452,27 +498,63 @@ function bindEvents() {
   }
 }
 
-function login() {
-  const role = refs.authRole.value;
-  const pin = refs.authPin.value.trim();
+async function login() {
+  const email = (refs.authEmail.value || "").trim().toLowerCase();
+  const password = refs.authPassword.value || "";
 
-  if (!pins[role] || pin !== pins[role]) {
-    setStatus(refs.authStatus, "Fel roll eller PIN.");
+  if (!email || !password) {
+    setStatus(refs.authStatus, "Fyll i e-post och lösenord.");
     return;
   }
 
-  session = { role, label: authLabels[role] || role };
-  saveSession();
-  refs.authForm.reset();
-  setStatus(refs.authStatus, "");
-  applyAuthUi();
-  renderAll();
-  showOnboardingIfNeeded();
+  try {
+    const payload = await postJson(AUTH_LOGIN_API, { email, password });
+    session = payload.user ? mapSessionUser(payload.user) : null;
+    refs.authForm.reset();
+    setStatus(refs.authStatus, "");
+    await hydrateFromServerStorage();
+    await loadUserAccounts();
+    applyAuthUi();
+    renderAll();
+    showOnboardingIfNeeded();
+  } catch (error) {
+    setStatus(refs.authStatus, error.message || "Kunde inte logga in.");
+  }
 }
 
-function logout() {
+async function bootstrapAdmin() {
+  const displayName = (refs.setupName.value || "").trim();
+  const email = (refs.setupEmail.value || "").trim().toLowerCase();
+  const password = refs.setupPassword.value || "";
+
+  if (!displayName || !email || !password) {
+    setStatus(refs.setupStatus, "Fyll i namn, e-post och lösenord.");
+    return;
+  }
+
+  try {
+    const payload = await postJson(AUTH_BOOTSTRAP_API, { displayName, email, password });
+    authNeedsSetup = false;
+    session = payload.user ? mapSessionUser(payload.user) : null;
+    refs.setupForm.reset();
+    setStatus(refs.setupStatus, "");
+    await hydrateFromServerStorage();
+    await loadUserAccounts();
+    applyAuthUi();
+    renderAll();
+  } catch (error) {
+    setStatus(refs.setupStatus, error.message || "Kunde inte skapa första admin.");
+  }
+}
+
+async function logout() {
+  try {
+    await postJson(AUTH_LOGOUT_API, {});
+  } catch {
+    // Clear local auth state even if logout request fails.
+  }
   session = null;
-  localStorage.removeItem(SESSION_KEY);
+  adminUsers = [];
   closeOnboarding(false);
   applyAuthUi();
 }
@@ -483,15 +565,23 @@ function applyAuthUi() {
   refs.authScreen.classList.toggle("hidden", loggedIn);
   refs.appRoot.classList.toggle("hidden", !loggedIn);
 
+  if (refs.setupForm) {
+    refs.setupForm.classList.toggle("hidden", !authNeedsSetup || loggedIn);
+  }
+  if (refs.authForm) {
+    refs.authForm.classList.toggle("hidden", authNeedsSetup && !loggedIn);
+  }
+  if (refs.authLead) {
+    refs.authLead.textContent = authNeedsSetup
+      ? "Skapa första admin-kontot för föreningen."
+      : "Logga in med e-post och lösenord.";
+  }
+
   if (!loggedIn) {
     if (refs.roleHint) {
       refs.roleHint.classList.add("hidden");
     }
     return;
-  }
-
-  if (refs.currentUser) {
-    refs.currentUser.textContent = `Inloggad: ${session.label}`;
   }
 
   const admin = isAdmin();
@@ -523,6 +613,113 @@ function applyAuthUi() {
   refs.exportCsvBtn.disabled = false;
   renderRoleHint();
   renderTopStatusBar();
+}
+
+function mapSessionUser(user) {
+  if (!user || user.role !== "admin") {
+    return null;
+  }
+  return {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    label: user.displayName || authLabels[user.role] || "Admin",
+  };
+}
+
+async function refreshSessionStatus() {
+  try {
+    const payload = await getJson(AUTH_STATUS_API);
+    authNeedsSetup = Boolean(payload.needsSetup);
+    session = payload.user ? mapSessionUser(payload.user) : null;
+  } catch {
+    authNeedsSetup = false;
+    session = null;
+  }
+}
+
+async function loadUserAccounts() {
+  if (!isAdmin()) {
+    adminUsers = [];
+    renderUserAccounts();
+    return;
+  }
+  try {
+    const payload = await getJson(ADMIN_USERS_API);
+    adminUsers = Array.isArray(payload.users) ? payload.users : [];
+    renderUserAccounts();
+  } catch {
+    adminUsers = [];
+    renderUserAccounts();
+  }
+}
+
+async function changeOwnPassword() {
+  if (!isAdmin()) {
+    setStatus(refs.passwordStatus, "Du måste vara inloggad.");
+    return;
+  }
+  const currentPassword = refs.currentPasswordInput.value || "";
+  const newPassword = refs.newPasswordInput.value || "";
+  if (!currentPassword || !newPassword) {
+    setStatus(refs.passwordStatus, "Fyll i nuvarande och nytt lösenord.");
+    return;
+  }
+  try {
+    await postJson(AUTH_CHANGE_PASSWORD_API, { currentPassword, newPassword });
+    refs.passwordForm.reset();
+    setStatus(refs.passwordStatus, "Lösenord uppdaterat.");
+    addAuditLog("Bytte lösenord", session ? session.label : "Admin");
+    saveState();
+  } catch (error) {
+    setStatus(refs.passwordStatus, error.message || "Kunde inte byta lösenord.");
+  }
+}
+
+async function createManagedUser() {
+  if (!isAdmin()) {
+    setStatus(refs.userStatus, "Du måste vara admin.");
+    return;
+  }
+  const displayName = (refs.userNameInput.value || "").trim();
+  const email = (refs.userEmailInput.value || "").trim().toLowerCase();
+  const password = refs.userPasswordInput.value || "";
+  if (!displayName || !email || !password) {
+    setStatus(refs.userStatus, "Fyll i namn, e-post och lösenord.");
+    return;
+  }
+  try {
+    const payload = await postJson(ADMIN_USERS_API, { displayName, email, password });
+    refs.userForm.reset();
+    setStatus(refs.userStatus, `Styrelsekonto skapat: ${payload.user.displayName}`);
+    addAuditLog("Skapade styrelsekonto", `${payload.user.displayName} (${payload.user.email})`);
+    saveState();
+    await loadUserAccounts();
+  } catch (error) {
+    setStatus(refs.userStatus, error.message || "Kunde inte skapa användare.");
+  }
+}
+
+async function resetManagedUserPassword(userId) {
+  if (!isAdmin()) {
+    return;
+  }
+  const user = adminUsers.find((entry) => entry.id === userId);
+  if (!user) {
+    return;
+  }
+  const nextPassword = window.prompt(`Nytt lösenord för ${user.displayName}:`);
+  if (!nextPassword) {
+    return;
+  }
+  try {
+    await postJson(`${ADMIN_USERS_API}/${encodeURIComponent(userId)}/password`, { newPassword: nextPassword });
+    setStatus(refs.userStatus, `Lösenord uppdaterat för ${user.displayName}.`);
+    addAuditLog("Nollställde lösenord", `${user.displayName} (${user.email})`);
+    saveState();
+  } catch (error) {
+    setStatus(refs.userStatus, error.message || "Kunde inte uppdatera lösenord.");
+  }
 }
 
 function hydrateCategorySelect() {
@@ -731,7 +928,7 @@ function addMember() {
   renderAll();
 }
 
-function createInvoice() {
+function createInvoice(openMailAfterCreate = false) {
   if (!canManageInvoices()) {
     setStatus(refs.invoiceStatus, "Du saknar behörighet att skapa fakturor.");
     return;
@@ -740,16 +937,18 @@ function createInvoice() {
   const memberId = refs.invoiceMemberSelect.value;
   const series = refs.invoiceSeriesSelect.value === "F" ? "F" : "P";
   const amount = parseMoney(refs.invoiceAmountInput.value);
+  const invoiceDate = refs.invoiceDateInput.value;
   const dueDate = refs.invoiceDueDateInput.value;
   const note = refs.invoiceNoteInput.value.trim();
   const member = state.members.find((item) => item.id === memberId);
 
-  if (!member || !Number.isFinite(amount) || amount <= 0 || !dueDate) {
-    setStatus(refs.invoiceStatus, "Välj medlem, belopp och förfallodatum.");
+  if (!member || !Number.isFinite(amount) || amount <= 0 || !invoiceDate || !dueDate) {
+    setStatus(refs.invoiceStatus, "Välj medlem, belopp, fakturadatum och förfallodatum.");
     return;
   }
 
-  const invoiceNo = buildInvoiceNumber(series, dueDate || toDateInput(new Date()));
+  const invoiceNo = buildInvoiceNumber(series, invoiceDate || toDateInput(new Date()));
+  const createdAtDate = new Date(`${invoiceDate}T12:00:00`);
   const invoice = {
     id: crypto.randomUUID(),
     invoiceNo,
@@ -761,7 +960,7 @@ function createInvoice() {
     dueDate,
     note,
     status: "unpaid",
-    createdAt: new Date().toISOString(),
+    createdAt: Number.isNaN(createdAtDate.getTime()) ? new Date().toISOString() : createdAtDate.toISOString(),
     paidAt: null,
     rejectedAt: null,
     paymentTxId: null,
@@ -770,11 +969,15 @@ function createInvoice() {
   state.invoices.push(invoice);
   saveState();
   refs.invoiceForm.reset();
+  refs.invoiceDateInput.value = toDateInput(new Date());
   refs.invoiceDueDateInput.value = toDateInput(addDays(new Date(), 30));
   setStatus(refs.invoiceStatus, `Faktura skapad: ${invoiceNo}`);
   addAuditLog("Skapade faktura", `${invoiceNo} ${member.name} ${formatMoney(amount)}`);
   saveState();
   renderAll();
+  if (openMailAfterCreate) {
+    sendInvoiceEmail(invoice.id);
+  }
 }
 
 function markInvoicePaid(id) {
@@ -1347,30 +1550,6 @@ function addActivity() {
   renderAll();
 }
 
-function updatePins() {
-  if (!isAdmin()) {
-    setStatus(refs.pinStatus, "Endast admin kan byta PIN.");
-    return;
-  }
-
-  const adminPin = refs.adminPinInput.value.trim();
-
-  if (!isValidPin(adminPin)) {
-    setStatus(refs.pinStatus, "PIN måste vara 4-8 siffror.");
-    return;
-  }
-
-  pins = {
-    admin: adminPin,
-  };
-  addAuditLog("Bytte PIN-kod", "Admin uppdaterade Admin PIN");
-
-  savePins();
-  refs.pinForm.reset();
-  setStatus(refs.pinStatus, "Admin PIN uppdaterad.");
-  renderAuthPinHint();
-}
-
 function addAccount() {
   if (!isAdmin()) {
     setStatus(refs.accountStatus, "Endast admin kan ändra kontoplan.");
@@ -1632,12 +1811,39 @@ function renderAll() {
     renderActivities();
   }
   renderAccounts();
+  renderUserAccounts();
   renderCards();
   renderKpis();
   renderReport();
   renderAuditLog();
   renderMonthLockStatus();
   updateTxFilterUi();
+}
+
+function renderUserAccounts() {
+  if (!refs.userList || !refs.userEmpty) {
+    return;
+  }
+  refs.userList.innerHTML = "";
+  const sorted = [...adminUsers].sort((a, b) =>
+    String(a.displayName || "").localeCompare(String(b.displayName || ""), "sv")
+  );
+  for (const user of sorted) {
+    const item = document.createElement("li");
+    item.className = "item";
+    item.innerHTML = `
+      <div>
+        <strong>${escapeHtml(user.displayName || user.email)}</strong>
+        <div class="meta">${escapeHtml(user.email)} - ${escapeHtml(authLabels[user.role] || user.role || "Admin")}</div>
+      </div>
+      <button class="icon-btn" type="button" data-user-reset="${user.id}">Byt lösenord</button>
+    `;
+    refs.userList.append(item);
+  }
+  refs.userList.querySelectorAll("[data-user-reset]").forEach((button) => {
+    button.addEventListener("click", () => resetManagedUserPassword(button.dataset.userReset));
+  });
+  refs.userEmpty.hidden = sorted.length > 0;
 }
 
 function renderInvoices() {
@@ -1692,6 +1898,7 @@ function renderInvoices() {
       </div>
       <div class="actions">
         ${canManage ? `<button class="icon-btn" type="button" data-invoice-copy="${invoice.id}" ${disableAllActions ? "disabled" : ""}>Kopiera</button>` : ""}
+        ${canManage ? `<button class="icon-btn" type="button" data-invoice-send="${invoice.id}" ${disableAllActions ? "disabled" : ""}>Skicka faktura</button>` : ""}
         <button class="icon-btn" type="button" data-invoice-print="${invoice.id}">Skriv ut faktura</button>
         ${canManage ? `<button class="icon-btn" type="button" data-invoice-remind="${invoice.id}" ${disableAllActions ? "disabled" : ""}>Påminnelse</button>` : ""}
         ${canManage ? `<button class="icon-btn" type="button" data-invoice-paid="${invoice.id}" ${disableAllActions ? "disabled" : ""}>Markera betald</button>` : ""}
@@ -1703,6 +1910,9 @@ function renderInvoices() {
 
   refs.invoiceList.querySelectorAll("[data-invoice-copy]").forEach((button) => {
     button.addEventListener("click", () => copyInvoiceText(button.dataset.invoiceCopy));
+  });
+  refs.invoiceList.querySelectorAll("[data-invoice-send]").forEach((button) => {
+    button.addEventListener("click", () => sendInvoiceEmail(button.dataset.invoiceSend));
   });
   refs.invoiceList.querySelectorAll("[data-invoice-paid]").forEach((button) => {
     button.addEventListener("click", () => markInvoicePaid(button.dataset.invoicePaid));
@@ -2332,8 +2542,60 @@ async function sendInvoiceReminder(id) {
       invoice.amount
     )}.\nFörfallodatum: ${formatDate(invoice.dueDate)}.\n\nTack!`
   );
+  downloadInvoicePdfForEmail(invoice);
   window.location.href = `mailto:${encodeURIComponent(invoice.memberEmail)}?subject=${subject}&body=${body}`;
-  setStatus(refs.invoiceStatus, `Mailutkast öppnat för ${invoice.invoiceNo}.`);
+  setStatus(
+    refs.invoiceStatus,
+    `Mailutkast öppnat för ${invoice.invoiceNo} till ${invoice.memberEmail}. PDF-faktura nedladdad för bilaga.`
+  );
+}
+
+function sendInvoiceEmail(id) {
+  if (!canManageInvoices()) {
+    setStatus(refs.invoiceStatus, "Du saknar behörighet att skicka faktura.");
+    return;
+  }
+
+  const invoice = state.invoices.find((item) => item.id === id);
+  if (!invoice) {
+    setStatus(refs.invoiceStatus, "Fakturan hittades inte.");
+    return;
+  }
+
+  const subject = encodeURIComponent(`Faktura medlemsavgift ${invoice.invoiceNo}`);
+  const body = encodeURIComponent(
+    `Hej ${invoice.memberName},\n\n` +
+      `Här kommer faktura för medlemsavgift.\n\n` +
+      `Fakturanummer: ${invoice.invoiceNo}\n` +
+      `Belopp: ${formatMoney(invoice.amount)}\n` +
+      `Förfallodatum: ${formatDate(invoice.dueDate)}\n` +
+      `${state.settings.bankgiro ? `Bankgiro: ${state.settings.bankgiro}\n` : ""}` +
+      `${state.settings.swishNumber ? `Swish: ${state.settings.swishNumber}\n` : ""}` +
+      `Meddelande/referens: ${getSwishMessage(invoice)}\n\n` +
+      `${invoice.note ? `Notering: ${invoice.note}\n\n` : ""}` +
+      `Bifoga PDF-fakturan från appen via "Skriv ut faktura".\n\n` +
+      `Tack!`
+  );
+
+  downloadInvoicePdfForEmail(invoice);
+  window.location.href = `mailto:${encodeURIComponent(invoice.memberEmail)}?subject=${subject}&body=${body}`;
+  setStatus(
+    refs.invoiceStatus,
+    `Mailutkast öppnat för fakturautskick ${invoice.invoiceNo} till ${invoice.memberEmail}. PDF-faktura nedladdad för bilaga.`
+  );
+}
+
+function downloadInvoicePdfForEmail(invoice) {
+  if (!invoice) {
+    return;
+  }
+  const pdfDataUrl = buildInvoicePdfDataUrl(invoice);
+  const link = document.createElement("a");
+  link.href = pdfDataUrl;
+  link.download = `${invoice.invoiceNo}.pdf`;
+  document.body.append(link);
+  link.click();
+  link.remove();
 }
 
 function exportFullBackup() {
@@ -2345,7 +2607,6 @@ function exportFullBackup() {
     version: 2,
     state,
     accountsByType,
-    pins,
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
@@ -2406,13 +2667,6 @@ function importFullBackup(event) {
           expense: normalizeAccountsList(parsed.accountsByType.expense, defaultAccountsByType.expense),
         };
         saveAccounts();
-      }
-
-      if (parsed.pins && isValidPin(parsed.pins.admin)) {
-        pins = {
-          admin: parsed.pins.admin,
-        };
-        savePins();
       }
 
       saveState();
@@ -2549,10 +2803,6 @@ function isAuditor() {
   return false;
 }
 
-function isValidPin(value) {
-  return /^\d{4,8}$/.test(value);
-}
-
 function addAuditLog(action, detail) {
   const by = session ? session.label : "System";
   state.auditLog.push({
@@ -2634,6 +2884,7 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(KEY, JSON.stringify(state));
+  scheduleDiskSync();
 }
 
 function loadAccounts() {
@@ -2655,60 +2906,115 @@ function loadAccounts() {
 
 function saveAccounts() {
   localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accountsByType));
+  scheduleDiskSync();
 }
 
-function loadPins() {
+async function hydrateFromServerStorage() {
   try {
-    const raw = localStorage.getItem(PINS_KEY);
-    if (!raw) {
-      return { ...defaultPins };
+    const response = await fetch(DISK_API_LOAD, { cache: "no-store", credentials: "same-origin" });
+    if (response.status === 401) {
+      diskAvailable = false;
+      return;
+    }
+    if (!response.ok) {
+      return;
+    }
+    const payload = await response.json();
+    diskAvailable = true;
+
+    if (payload && payload.state && typeof payload.state === "object") {
+      const candidate = payload.state;
+      state.transactions = Array.isArray(candidate.transactions) ? candidate.transactions : [];
+      state.members = Array.isArray(candidate.members) ? candidate.members : [];
+      state.invoices = Array.isArray(candidate.invoices) ? candidate.invoices : [];
+      state.activities = Array.isArray(candidate.activities) ? candidate.activities : [];
+      state.auditLog = Array.isArray(candidate.auditLog) ? candidate.auditLog : [];
+      state.monthLocks = Array.isArray(candidate.monthLocks) ? candidate.monthLocks : [];
+      state.settings = {
+        clubName: String(candidate.settings?.clubName || "Essinge Rovers IK"),
+        orgNo: String(candidate.settings?.orgNo || ""),
+        bankgiro: String(candidate.settings?.bankgiro || ""),
+        plusgiro: String(candidate.settings?.plusgiro || ""),
+        bankAccount: String(candidate.settings?.bankAccount || ""),
+        swishNumber: String(candidate.settings?.swishNumber || ""),
+        swishRecipient: String(candidate.settings?.swishRecipient || candidate.settings?.clubName || "Essinge Rovers IK"),
+        emailWebhookUrl: String(candidate.settings?.emailWebhookUrl || ""),
+      };
     }
 
-    const parsed = JSON.parse(raw);
-    return {
-      admin: isValidPin(parsed.admin) ? parsed.admin : defaultPins.admin,
-    };
+    if (payload && payload.accountsByType && typeof payload.accountsByType === "object") {
+      accountsByType = {
+        income: normalizeAccountsList(payload.accountsByType.income, defaultAccountsByType.income),
+        expense: normalizeAccountsList(payload.accountsByType.expense, defaultAccountsByType.expense),
+      };
+    }
+
+    localStorage.setItem(KEY, JSON.stringify(state));
+    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accountsByType));
+
+    hydrateCategorySelect();
+    applyAuthUi();
+    renderAll();
   } catch {
-    return { ...defaultPins };
+    diskAvailable = false;
   }
 }
 
-function savePins() {
-  localStorage.setItem(PINS_KEY, JSON.stringify(pins));
-}
-
-function renderAuthPinHint() {
-  if (!refs.authPinHint) {
+function scheduleDiskSync() {
+  if (!diskAvailable) {
     return;
   }
-  const showDefaultPinHint = pins.admin === defaultPins.admin;
-  refs.authPinHint.textContent = showDefaultPinHint
-    ? "Första inloggning: Admin 1122. Admin kan sedan byta PIN."
-    : "";
-  refs.authPinHint.classList.toggle("hidden", !showDefaultPinHint);
+  if (diskSyncTimer) {
+    clearTimeout(diskSyncTimer);
+  }
+  diskSyncTimer = setTimeout(() => {
+    diskSyncTimer = null;
+    flushDiskSync();
+  }, 180);
 }
 
-function loadSession() {
+async function flushDiskSync() {
   try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) {
-      return null;
+    const payload = {
+      state,
+      accountsByType,
+    };
+    const response = await fetch(DISK_API_SAVE, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      throw new Error("disk save failed");
     }
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed.role !== "string") {
-      return null;
-    }
-    if (!authLabels[parsed.role]) {
-      return null;
-    }
-    return { role: parsed.role, label: authLabels[parsed.role] };
   } catch {
-    return null;
+    // Keep app usable even if disk save fails temporarily.
+    diskAvailable = false;
   }
 }
 
-function saveSession() {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+async function getJson(url) {
+  const response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || "Begäran misslyckades.");
+  }
+  return payload;
+}
+
+async function postJson(url, body) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(body || {}),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || "Begäran misslyckades.");
+  }
+  return payload;
 }
 
 function setReferenceHint(text) {
