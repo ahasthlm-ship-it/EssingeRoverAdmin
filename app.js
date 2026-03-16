@@ -3107,52 +3107,121 @@ async function openTransactionReference(id) {
   if (!entry || !entry.referenceDataUrl) {
     return;
   }
-  const popup = window.open("", "_blank", "noopener");
-  let resolvedUrl = entry.referenceDataUrl;
-  let revokeUrl = "";
-
-  try {
-    if (String(entry.referenceDataUrl).startsWith("data:")) {
-      const response = await fetch(entry.referenceDataUrl);
-      const blob = await response.blob();
-      resolvedUrl = URL.createObjectURL(blob);
-      revokeUrl = resolvedUrl;
-    }
-  } catch {
-    resolvedUrl = entry.referenceDataUrl;
-  }
+  const popup = window.open("", "_blank");
+  const asset = await resolveReferenceAsset(entry);
+  const mimeType = String(asset.mimeType || entry.referenceMimeType || "").toLowerCase();
+  const safeTitle = escapeHtml(entry.referenceName || "Referens");
 
   if (popup) {
-    popup.location.href = resolvedUrl;
-    if (revokeUrl) {
-      setTimeout(() => URL.revokeObjectURL(revokeUrl), 60000);
+    if (mimeType.includes("pdf")) {
+      popup.document.open();
+      popup.document.write(`<!doctype html>
+        <html lang="sv">
+          <head>
+            <meta charset="utf-8" />
+            <title>${safeTitle}</title>
+            <style>
+              html, body { margin: 0; height: 100%; background: #0f172a; }
+              iframe { width: 100%; height: 100%; border: 0; background: white; }
+            </style>
+          </head>
+          <body>
+            <iframe src="${asset.url}" title="${safeTitle}"></iframe>
+          </body>
+        </html>`);
+      popup.document.close();
+    } else if (mimeType.startsWith("image/")) {
+      popup.document.open();
+      popup.document.write(`<!doctype html>
+        <html lang="sv">
+          <head>
+            <meta charset="utf-8" />
+            <title>${safeTitle}</title>
+            <style>
+              html, body {
+                margin: 0;
+                min-height: 100%;
+                background: #0f172a;
+                display: grid;
+                place-items: center;
+              }
+              img {
+                max-width: 100%;
+                max-height: 100vh;
+                object-fit: contain;
+              }
+            </style>
+          </head>
+          <body>
+            <img src="${asset.url}" alt="${safeTitle}" />
+          </body>
+        </html>`);
+      popup.document.close();
+    } else {
+      popup.location.href = asset.url;
+    }
+    if (asset.revokeUrl) {
+      setTimeout(() => URL.revokeObjectURL(asset.revokeUrl), 60000);
     }
     return;
   }
 
   const link = document.createElement("a");
-  link.href = resolvedUrl;
+  link.href = asset.url;
   link.target = "_blank";
   link.rel = "noopener";
   document.body.append(link);
   link.click();
   link.remove();
 
-  if (revokeUrl) {
-    setTimeout(() => URL.revokeObjectURL(revokeUrl), 60000);
+  if (asset.revokeUrl) {
+    setTimeout(() => URL.revokeObjectURL(asset.revokeUrl), 60000);
   }
   setStatus(refs.txStatus, "Referens öppnad i ny flik. Om inget händer: tillåt popup för sidan.");
 }
 
-function downloadTransactionReference(id) {
+async function downloadTransactionReference(id) {
   const entry = state.transactions.find((item) => item.id === id);
   if (!entry || !entry.referenceDataUrl) {
     return;
   }
+  const asset = await resolveReferenceAsset(entry);
   const link = document.createElement("a");
-  link.href = entry.referenceDataUrl;
+  link.href = asset.url;
   link.download = entry.referenceName || "referens";
   link.click();
+  if (asset.revokeUrl) {
+    setTimeout(() => URL.revokeObjectURL(asset.revokeUrl), 60000);
+  }
+}
+
+async function resolveReferenceAsset(entry) {
+  if (!entry || !entry.referenceDataUrl) {
+    return { url: "", revokeUrl: "", mimeType: "" };
+  }
+  if (!String(entry.referenceDataUrl).startsWith("data:")) {
+    return {
+      url: entry.referenceDataUrl,
+      revokeUrl: "",
+      mimeType: entry.referenceMimeType || "",
+    };
+  }
+  try {
+    const response = await fetch(entry.referenceDataUrl);
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    return {
+      url,
+      revokeUrl: url,
+      mimeType: blob.type || entry.referenceMimeType || "",
+    };
+  } catch {
+    return {
+      url: entry.referenceDataUrl,
+      revokeUrl: "",
+      mimeType: entry.referenceMimeType || "",
+    };
+  }
 }
 
 function replaceTransactionReference(id) {
